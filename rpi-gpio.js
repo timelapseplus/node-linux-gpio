@@ -93,6 +93,7 @@ function Gpio() {
 
     this.MODE_RPI = 'mode_rpi';
     this.MODE_BCM = 'mode_bcm';
+    this.MODE_RAW = 'mode_raw';
 
     this.EDGE_NONE    = 'none';
     this.EDGE_RISING  = 'rising';
@@ -109,6 +110,8 @@ function Gpio() {
             getPinForCurrentMode = getPinRpi;
         } else if (mode === this.MODE_BCM) {
             getPinForCurrentMode = getPinBcm;
+        } else if (mode === this.MODE_RAW) {
+            getPinForCurrentMode = getPinRaw;
         } else {
             throw new Error('Cannot set invalid mode');
         }
@@ -328,6 +331,11 @@ function Gpio() {
     function getPinRpi(channel) {
         return currentPins[channel] + '';
     };
+
+    function getPinRaw(channel) {
+        return channel + '';
+    };
+
 
     function getPinBcm(channel) {
         channel = parseInt(channel, 10);
