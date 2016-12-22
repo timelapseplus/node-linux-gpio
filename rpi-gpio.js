@@ -1,9 +1,7 @@
 var fs           = require('fs');
 var util         = require('util');
-var EventEmitter = require('events').EventEmitter;
 var async        = require('async');
 var debug        = require('debug')('rpi-gpio');
-var Epoll        = require('epoll').Epoll;
 
 var PATH = '/sys/class/gpio';
 var PINS = {
@@ -86,7 +84,6 @@ function Gpio() {
     var exportedInputPins = {};
     var exportedOutputPins = {};
     var getPinForCurrentMode = getPinRpi;
-    var pollers = {};
 
     this.DIR_IN   = 'in';
     this.DIR_OUT  = 'out';
@@ -94,11 +91,6 @@ function Gpio() {
     this.MODE_RPI = 'mode_rpi';
     this.MODE_BCM = 'mode_bcm';
     this.MODE_RAW = 'mode_raw';
-
-    this.EDGE_NONE    = 'none';
-    this.EDGE_RISING  = 'rising';
-    this.EDGE_FALLING = 'falling';
-    this.EDGE_BOTH    = 'both';
 
     /**
      * Set pin reference mode. Defaults to 'mode_rpi'.
@@ -175,22 +167,6 @@ function Gpio() {
                 }
 
                 setDirection(pinForSetup, direction, next);
-            }.bind(this),
-            function(next) {
-                listen(channel, function(readChannel) {
-                    this.read(readChannel, function(err, value) {
-                        if (err) {
-                            debug(
-                                'Error reading channel value after change, %d',
-                                readChannel
-                            );
-                            return
-                        }
-                        debug('emitting change on channel %s with value %s', readChannel, value);
-                        this.emit('change', readChannel, value);
-                    }.bind(this));
-                }.bind(this));
-                next()
             }.bind(this)
         ], onSetup);
     };
@@ -257,7 +233,6 @@ function Gpio() {
             .concat(Object.keys(exportedInputPins))
             .map(function(pin) {
                 return function(done) {
-                    removeListener(pin, pollers)
                     unexportPin(pin, done);
                 }
             });
@@ -271,15 +246,12 @@ function Gpio() {
     this.reset = function() {
         exportedOutputPins = {};
         exportedInputPins = {};
-        this.removeAllListeners();
 
         currentPins = undefined;
         getPinForCurrentMode = getPinRpi;
-        pollers = {}
     };
 
     // Init
-    EventEmitter.call(this);
     this.reset();
 
 
@@ -349,44 +321,8 @@ function Gpio() {
             40
         ].indexOf(channel) !== -1 ? (channel + '') : null;
     };
-
-    /**
-     * Listen for interrupts on a channel
-     *
-     * @param {number}      channel The channel to watch
-     * @param {function}    cb Callback which receives the channel's err
-     */
-    function listen(channel, onChange) {
-        var pin = getPinForCurrentMode(channel);
-
-        if (!exportedInputPins[pin] && !exportedOutputPins[pin]) {
-            throw new Error('Channel %d has not been exported', channel);
-        }
-
-        debug('listen for pin %d', pin);
-        var poller = new Epoll(function(err, innerfd, events) {
-            if (err) throw err
-            clearInterrupt(innerfd);
-            onChange(channel);
-        });
-
-        var fd = fs.openSync(PATH + '/gpio' + pin + '/value', 'r+');
-        clearInterrupt(fd);
-        poller.add(fd, Epoll.EPOLLPRI);
-        // Append ready-to-use remove function
-        pollers[pin] = function() {
-            poller.remove(fd).close();
-        }
-    };
 }
-util.inherits(Gpio, EventEmitter);
-
-function setEdge(pin, edge, cb) {
-    debug('set edge %s on pin %d', edge.toUpperCase(), pin);
-    fs.writeFile(PATH + '/gpio' + pin + '/edge', edge, function(err) {
-        if (cb) return cb(err);
-    });
-}
+util.inherits(Gpio);
 
 function setDirection(pin, direction, cb) {
     debug('set direction %s on pin %d', direction.toUpperCase(), pin);
@@ -413,19 +349,6 @@ function isExported(pin, cb) {
     fs.exists(PATH + '/gpio' + pin, function(exists) {
         return cb(null, exists);
     });
-}
-
-function removeListener(pin, pollers) {
-    if (!pollers[pin]) {
-        return
-    }
-    debug('remove listener for pin %d', pin)
-    pollers[pin]()
-    delete pollers[pin]
-}
-
-function clearInterrupt(fd) {
-    fs.readSync(fd, new Buffer(1), 0, 1, 0);
 }
 
 module.exports = new Gpio;
