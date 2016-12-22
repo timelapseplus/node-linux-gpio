@@ -322,7 +322,6 @@ function Gpio() {
         ].indexOf(channel) !== -1 ? (channel + '') : null;
     };
 }
-util.inherits(Gpio);
 
 function setDirection(pin, direction, cb) {
     debug('set direction %s on pin %d', direction.toUpperCase(), pin);
