@@ -125,19 +125,14 @@ function Gpio() {
      * @param edge       edge Informs the GPIO chip if it needs to generate interrupts. Either 'none', 'rising', 'falling' or 'both'. Defaults to 'none'
      * @param {function} onSetup   Optional callback
      */
-    this.setup = function(channel, direction, edge, onSetup /*err*/) {
+    this.setup = function(channel, direction, onSetup /*err*/) {
         if (arguments.length === 2 && typeof direction == 'function') {
             onSetup = direction;
             direction = this.DIR_OUT;
-            edge = this.EDGE_NONE;
-        } else if (arguments.length === 3 && typeof edge == 'function') {
-            onSetup = edge;
-            edge = this.EDGE_NONE;
         }
 
         channel = parseInt(channel)
         direction = direction || this.DIR_OUT;
-        edge = edge || this.EDGE_NONE;
         onSetup = onSetup || function() {};
 
         if (typeof channel !== 'number') {
@@ -149,17 +144,6 @@ function Gpio() {
         if (direction !== this.DIR_IN && direction !== this.DIR_OUT) {
             return process.nextTick(function() {
                 onSetup(new Error('Cannot set invalid direction'));
-            });
-        }
-
-        if ([
-            this.EDGE_NONE,
-            this.EDGE_RISING,
-            this.EDGE_FALLING,
-            this.EDGE_BOTH
-        ].indexOf(edge) == -1) {
-            return process.nextTick(function() {
-                onSetup(new Error('Cannot set invalid edge'));
             });
         }
 
@@ -182,9 +166,6 @@ function Gpio() {
             },
             function(next) {
                 exportPin(pinForSetup, next);
-            },
-            function(next) {
-                setEdge(pinForSetup, edge, next);
             },
             function(next) {
                 if (direction === this.DIR_IN) {
