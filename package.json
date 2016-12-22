@@ -2,7 +2,7 @@
   "name": "linux-gpio",
   "version": "0.7.0",
   "description": "Control Raspberry Pi GPIO pins with node.js",
-  "main": "rpi-gpio.js",
+  "main": "linux-gpio.js",
   "keywords:": [
     "raspberry",
     "pi",
@@ -32,6 +32,6 @@
   "readmeFilename": "README.md",
   "dependencies": {
     "async": "1.x",
-    "debug": "2.x",
+    "debug": "2.x"
   }
 }
